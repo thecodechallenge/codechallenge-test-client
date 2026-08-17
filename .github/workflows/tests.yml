@@ -57,11 +57,26 @@ jobs:
       # action guarda el badge en la branch python-coverage-comment-action-data
       # de este mismo repo, y en un PR deja el detalle línea por línea como
       # comentario. Sólo una pata de la matriz, si no se pisan entre sí.
-      - name: Coverage badge and PR comment
+      - name: Coverage PR comment and HTML report
         if: matrix.python-version == '3.12'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
+
+      # Coveralls, de donde sale el badge de cobertura. No lleva secret: el repo
+      # es público, así que la action se autentica con el GITHUB_TOKEN que ya
+      # recibe. coverage escribe un .coverage binario que Coveralls no lee, de
+      # ahí la conversión a LCOV.
+      - name: Convert coverage to LCOV
+        if: matrix.python-version == '3.12'
+        run: coverage lcov -o coverage.lcov
+
+      - name: Upload coverage to Coveralls
+        if: matrix.python-version == '3.12'
+        uses: coverallsapp/github-action@v2
+        with:
+          file: coverage.lcov
+          format: lcov
 
   # Los tres badges del README se generan acá y salen todos de la misma branch
   # de datos, así no dependemos de que un tercero publique nada.
@@ -97,8 +112,6 @@ jobs:
           # Es el mismo commit que ya validó el job unittest, así que los
           # números dan igual; se recalculan porque este job arranca limpio.
           flake8 . --exit-zero -qq --count > "$RUNNER_TEMP/lint.txt"
-          coverage run -m unittest discover > /dev/null 2>&1
-          coverage report --format=total > "$RUNNER_TEMP/total.txt"
           radon cc run.py test_run.py -j > "$RUNNER_TEMP/cc.json"
 
       - name: Build shields.io endpoints
@@ -108,7 +121,7 @@ jobs:
           import pathlib
           import sys
 
-          cc_path, total_path, lint_path, out_dir = sys.argv[1:5]
+          cc_path, lint_path, out_dir = sys.argv[1:4]
           out = pathlib.Path(out_dir)
           out.mkdir(parents=True, exist_ok=True)
 
@@ -139,18 +152,6 @@ jobs:
                 '{} ({})'.format(worst['rank'], worst['complexity']),
                 RANK_COLORS[worst['rank']])
 
-          # cobertura: 90 es el minimo que pide el curso
-          pct = int(pathlib.Path(total_path).read_text().strip())
-          if pct >= 95:
-              color = 'brightgreen'
-          elif pct >= 90:
-              color = 'green'
-          elif pct >= 75:
-              color = 'yellow'
-          else:
-              color = 'red'
-          write('coverage.json', 'coverage', '{}%'.format(pct), color)
-
           # lint
           issues = int(pathlib.Path(lint_path).read_text().strip())
           write('lint.json', 'flake8',
@@ -158,8 +159,8 @@ jobs:
                 'brightgreen' if issues == 0 else 'red')
           PY
           python "$RUNNER_TEMP/badges.py" \
-            "$RUNNER_TEMP/cc.json" "$RUNNER_TEMP/total.txt" \
-            "$RUNNER_TEMP/lint.txt" "$RUNNER_TEMP/badges"
+            "$RUNNER_TEMP/cc.json" "$RUNNER_TEMP/lint.txt" \
+            "$RUNNER_TEMP/badges"
 
       - name: Publish to the badge-data branch
         run: |
@@ -170,6 +171,6 @@ jobs:
           git checkout --orphan badge-data
           git rm -rf --cached . > /dev/null
           cp "$RUNNER_TEMP"/badges/*.json .
-          git add -f coverage.json complexity.json lint.json
+          git add -f complexity.json lint.json
           git commit -m "Badges for ${GITHUB_SHA:0:7}"
           git push -f origin badge-data

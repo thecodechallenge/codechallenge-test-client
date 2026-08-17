@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/thecodechallenge/codechallenge-test-client/actions/workflows/tests.yml/badge.svg)](https://github.com/thecodechallenge/codechallenge-test-client/actions/workflows/tests.yml)
 [![flake8](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/thecodechallenge/codechallenge-test-client/badge-data/lint.json&cacheSeconds=300)](https://github.com/thecodechallenge/codechallenge-test-client/actions/workflows/tests.yml)
-[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/thecodechallenge/codechallenge-test-client/badge-data/coverage.json&cacheSeconds=300)](https://htmlpreview.github.io/?https://github.com/thecodechallenge/codechallenge-test-client/blob/python-coverage-comment-action-data/htmlcov/index.html)
+[![Coverage Status](https://coveralls.io/repos/github/thecodechallenge/codechallenge-test-client/badge.svg?branch=main)](https://coveralls.io/github/thecodechallenge/codechallenge-test-client?branch=main)
 [![complexity](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/thecodechallenge/codechallenge-test-client/badge-data/complexity.json&cacheSeconds=300)](https://github.com/thecodechallenge/codechallenge-test-client/actions/workflows/tests.yml)
 
 A minimal **bot client** for [The Code Challenge](https://codechallenge.net.ar).
@@ -117,6 +117,25 @@ out of the measurement (`omit`) and skips the `if __name__ == '__main__':`
 block (`exclude_lines`), which the tests can't reach.
 
 This repo currently sits at **100%**.
+
+### Coveralls
+
+The coverage badge comes from
+[Coveralls](https://coveralls.io/github/thecodechallenge/codechallenge-test-client),
+which also keeps the history of how coverage moved commit to commit.
+
+**It needs no secret.** The repo is public, so `coverallsapp/github-action@v2`
+authenticates with the `GITHUB_TOKEN` it already receives — there is no
+`COVERALLS_REPO_TOKEN` to set, and none should be added. `coverage` writes a
+binary `.coverage` that Coveralls can't read, so the workflow converts it
+first:
+
+```bash
+coverage lcov -o coverage.lcov
+```
+
+Only the Python 3.12 leg of the matrix uploads. If both legs did, Coveralls
+would get two reports for the same commit and the percentage would flap.
 
 ### PR comments and the HTML report
 
